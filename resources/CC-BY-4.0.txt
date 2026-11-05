@@ -1,0 +1,12 @@
+Discord icon
+
+Source: selfh.st/icons, distributed through Dashboard Icons:
+https://dashboardicons.com/icons/external/discord
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Attribution: Discord icon by selfh.st. This file is included with the
+RetroShare Discord Bridge plugin solely to document the icon's source and
+license. Discord is a trademark of Discord Inc.; this project is not
+affiliated with or endorsed by Discord Inc.
