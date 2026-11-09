@@ -1,0 +1,6 @@
+/build/
+/lib/
+/temp/
+/Makefile*
+/.qmake.stash
+/object_script.*

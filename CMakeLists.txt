@@ -8,6 +8,7 @@ find_package(Qt5 5.15 REQUIRED COMPONENTS Core Widgets Network)
 get_filename_component(RETROSHARE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(RETROSHARE_ROOT "${RETROSHARE_ROOT}" CACHE PATH "RetroShare source tree")
 add_library(Discord MODULE DiscordPlugin.cpp DiscordPlugin.h DiscordBridge.cpp DiscordBridge.h BridgeMessages.h Discord_images.qrc)
+set_target_properties(Discord PROPERTIES PREFIX "")
 target_include_directories(Discord PRIVATE
     "${RETROSHARE_ROOT}/libretroshare/src"
     "${RETROSHARE_ROOT}/supportlibs/rapidjson/include")
