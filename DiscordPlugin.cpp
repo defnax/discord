@@ -24,13 +24,23 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSettings>
 #include <QThread>
+#include <retroshare/rsinit.h>
 #include <cstdlib>
 
 extern "C" {
 Q_DECL_EXPORT void* RETROSHARE_PLUGIN_provide() { return new DiscordPlugin; }
 Q_DECL_EXPORT uint32_t RETROSHARE_PLUGIN_revision = std::abs(std::atoi(RS_EXTRA_VERSION));
 Q_DECL_EXPORT uint32_t RETROSHARE_PLUGIN_api = RS_PLUGIN_API_VERSION;
+}
+static QSettings discordSettings()
+{
+    // Keep plugin settings with the active RetroShare account instead of the
+    // Windows Registry or the host application's global Qt settings.
+    const QString path = QString::fromStdString(
+        RsAccounts::AccountDirectory() + "/discordbridge.conf");
+    return QSettings(path, QSettings::IniFormat);
 }
 DiscordPlugin::~DiscordPlugin() { stop(); delete mPanel.data(); delete mBridge; }
 QIcon* DiscordPlugin::qt_icon() const
@@ -64,7 +74,7 @@ QWidget* DiscordPlugin::qt_config_panel() const
     auto layout = new QFormLayout(panel);
     auto notice = new QLabel("Forward new text messages both ways. Room messages become visible on Discord.\n"
                              "Use one bridge per room/channel pair. Bot and webhook messages are ignored.\n"
-                             "Token is kept in memory only; Start is required each session.", panel);
+                             "Settings are remembered locally; the bridge can reconnect automatically after restart.", panel);
     notice->setWordWrap(true);
     layout->addRow(notice);
     auto token = new QLineEdit(panel);
@@ -73,6 +83,9 @@ QWidget* DiscordPlugin::qt_config_panel() const
     auto channel = new QLineEdit(panel);
     channel->setPlaceholderText("Discord text channel ID");
     auto lobby = new QComboBox(panel);
+    QSettings settings = discordSettings();
+    token->setText(settings.value("DiscordBridge/token").toString());
+    channel->setText(settings.value("DiscordBridge/channel").toString());
     auto refresh = new QPushButton("Refresh joined lobbies", panel);
     const auto populate = [this, lobby] {
         const auto selected = lobby->currentData();
@@ -104,13 +117,43 @@ QWidget* DiscordPlugin::qt_config_panel() const
     auto status = new QLabel(mBridge->status(), panel);
     status->setWordWrap(true);
     status->setTextFormat(Qt::PlainText);
+    status->setStyleSheet("color: #777;");
+    stopButton->setEnabled(false);
     layout->addRow(start, stopButton);
     layout->addRow("Status", status);
-    QObject::connect(mBridge, &DiscordBridge::statusChanged, status, &QLabel::setText);
-    QObject::connect(start, &QPushButton::clicked, panel, [this, token, channel, lobby] {
-        if(mBridge->start(mChats, mIdentities, token->text(), channel->text().trimmed(), lobby->currentData().toULongLong()))
-            token->clear();
+    QObject::connect(mBridge, &DiscordBridge::statusChanged, panel, [status, start, stopButton](const QString& value) {
+        status->setText(value.startsWith("Running") || value.startsWith("Connecting")
+                            ? QString("● ") + value : value);
+        const bool active = value.startsWith("Running") || value.startsWith("Connecting");
+        status->setStyleSheet(active ? "color: #159447; font-weight: bold;" : "color: #777;");
+        start->setEnabled(!active);
+        stopButton->setEnabled(active);
     });
-    QObject::connect(stopButton, &QPushButton::clicked, mBridge, &DiscordBridge::stop);
+    QObject::connect(start, &QPushButton::clicked, panel, [this, token, channel, lobby] {
+        QSettings settings = discordSettings();
+        settings.setValue("DiscordBridge/token", token->text());
+        settings.setValue("DiscordBridge/channel", channel->text().trimmed());
+        settings.setValue("DiscordBridge/lobby", lobby->currentData().toULongLong());
+        if(mBridge->start(mChats, mIdentities, token->text(), channel->text().trimmed(), lobby->currentData().toULongLong())) {
+            settings.setValue("DiscordBridge/enabled", true);
+            settings.sync();
+        }
+    });
+    QObject::connect(stopButton, &QPushButton::clicked, panel, [this] {
+        QSettings settings = discordSettings();
+        settings.setValue("DiscordBridge/enabled", false);
+        settings.sync();
+        mBridge->stop();
+    });
+    const auto savedLobby = settings.value("DiscordBridge/lobby").toULongLong();
+    const int savedIndex = lobby->findData(QVariant::fromValue<qulonglong>(savedLobby));
+    if(savedIndex >= 0) lobby->setCurrentIndex(savedIndex);
+    if(settings.value("DiscordBridge/enabled", false).toBool() && savedIndex >= 0) {
+        QMetaObject::invokeMethod(panel, [this, token, channel, lobby] {
+            QSettings settings = discordSettings();
+            if(mBridge->start(mChats, mIdentities, token->text(), channel->text().trimmed(), lobby->currentData().toULongLong()))
+                settings.sync();
+        }, Qt::QueuedConnection);
+    }
     return panel;
 }

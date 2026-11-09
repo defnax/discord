@@ -44,11 +44,6 @@ panel. Build products have not been installed automatically.
    lobby, and press **Start bridge**. The status label reports connection errors.
    Use only one active bridge for a given room/channel pair.
 
-The token is masked, cleared from the input after a successful local start, and
-held only in process memory until Stop or exit. Nothing is saved to disk. Enter
-the settings again after restarting RetroShare. Closing the panel does not stop
-the bridge; use **Stop bridge**. Changing the destination requires starting again.
-
 ## Behavior and limits
 
 - HTTPS REST polling, normally one request every two seconds. Polling and sending
@@ -74,10 +69,6 @@ the bridge; use **Stop bridge**. Changing the destination requires starting agai
   lobby also stops it. Tokens and HTTP response bodies are not logged.
 - Uses Qt's normal certificate verification and system proxy configuration.
 
-Offline tests cover ID precision/order, formatting, Unicode chunks, bot/webhook
-filtering, startup history suppression, echo suppression, rate-limit retention,
-ambiguous sends and permission failures. Live Discord/RetroShare forwarding still
-requires an integration test with a real bot and joined lobby.
 
 Protocol references: [Discord messages](https://docs.discord.com/developers/resources/message)
 and [rate limits](https://docs.discord.com/developers/topics/rate-limits).
